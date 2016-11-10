@@ -13,7 +13,6 @@
 #   limitations under the License.
 
 from flask import Flask, json, jsonify, make_response, request, url_for, abort
-from applicationgraph import ApplicationGraph
 from failuregenerator import A8FailureGenerator
 from assertionchecker import A8AssertionChecker
 import os, sys, requests
@@ -30,14 +29,10 @@ app.debug = True
 def post_recipe():
     payload = request.get_json()
 
-    topology = payload.get("topology")
     scenarios = payload.get("scenarios")
     header = payload.get("header")
     pattern = payload.get("header_pattern")
     
-    if not topology:
-        abort(400, "Topology required")
-
     if not scenarios:
         abort(400, "Failure scenarios required")
 
@@ -47,8 +42,7 @@ def post_recipe():
     if not pattern:
         abort(400, "Header_pattern required")
 
-    appgraph = ApplicationGraph(topology)
-    fg = A8FailureGenerator(appgraph, a8_controller_url='{0}/v1/rules'.format(a8_controller_url), a8_controller_token=a8_controller_token,
+    fg = A8FailureGenerator(a8_controller_url='{0}/v1/rules'.format(a8_controller_url), a8_controller_token=a8_controller_token,
                             header=header, pattern=pattern, debug=debug)
     fg.setup_failures(scenarios)
     return make_response(jsonify(recipe_id=fg.get_id()), 201, {'location': url_for('get_recipe_results', recipe_id=fg.get_id())})

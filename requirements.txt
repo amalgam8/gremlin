@@ -3,7 +3,6 @@ flask
 simplejson
 gevent
 decorator
-networkx
 elasticsearch==2.4.0
 elasticsearch_dsl
 isodate

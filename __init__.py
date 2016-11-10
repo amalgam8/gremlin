@@ -13,6 +13,5 @@
 #   limitations under the License.
 
 # coding utf-8
-from .applicationgraph import *
 from .failuregenerator import *
 from .assertionchecker import *
