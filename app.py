@@ -32,8 +32,8 @@ def post_recipe():
 
     topology = payload.get("topology")
     scenarios = payload.get("scenarios")
-    header = payload.get("header")
-    pattern = payload.get("header_pattern")
+    headers = payload.get("headers")
+    #pattern = payload.get("header_pattern")
     
     if not topology:
         abort(400, "Topology required")
@@ -41,15 +41,14 @@ def post_recipe():
     if not scenarios:
         abort(400, "Failure scenarios required")
 
-    if not header:
-        abort(400, "Header required")
+    if headers and type(headers)!=dict:
+        abort(400, "Headers must be a dictionary")
 
-    if not pattern:
-        abort(400, "Header_pattern required")
+    # if not pattern:
+    #     abort(400, "Header_pattern required")
 
     appgraph = ApplicationGraph(topology)
-    fg = A8FailureGenerator(appgraph, a8_controller_url='{0}/v1/rules'.format(a8_controller_url), a8_controller_token=a8_controller_token,
-                            header=header, pattern=pattern, debug=debug)
+    fg = A8FailureGenerator(appgraph, a8_controller_url='{0}/v1/rules'.format(a8_controller_url), a8_controller_token=a8_controller_token, headers=headers, debug=debug)
     fg.setup_failures(scenarios)
     return make_response(jsonify(recipe_id=fg.get_id()), 201, {'location': url_for('get_recipe_results', recipe_id=fg.get_id())})
 
@@ -62,10 +61,8 @@ def get_recipe_results(recipe_id):
 
     if not checklist:
         abort(400, "Checklist required")
-    
-    log_server = checklist.get('log_server', a8_log_server)
-    
-    ac = A8AssertionChecker(es_host=log_server, trace_log_value=recipe_id, index=["_all"])      
+
+    ac = A8AssertionChecker(es_host=a8_log_server, trace_log_value=recipe_id, index=["_all"])      
     results = ac.check_assertions(checklist, continue_on_error=True)
 
     #print json.dumps(results, indent=2)
