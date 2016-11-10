@@ -53,7 +53,7 @@ def _duration_to_floatsec(s):
 
 class A8FailureGenerator(object):
 
-    def __init__(self, app, header=None, pattern=None, a8_controller_url = None, a8_controller_token=None, debug=False):
+    def __init__(self, app, headers=None, a8_controller_url = None, a8_controller_token=None, debug=False):
         """
         Create a new failure generator
         @param app ApplicationGraph: instance of ApplicationGraph object
@@ -63,16 +63,13 @@ class A8FailureGenerator(object):
         self._id = str(uuid.uuid1())
         self._queue = []
         self._rule_ids = []
-        self.header = header
-        self.pattern = pattern
+        self.headers = headers
         self.a8_controller_url = a8_controller_url
         self.a8_controller_token = a8_controller_token
         assert a8_controller_url is not None and a8_controller_token is not None
-        # The failure generator SDK supports only one failure recipe at a given time. A recipe can consist of multiple tests.
-        # The trackingheader and pattern fields in the recipes will be ignored. But multiple failure generators
-        # can be run from different processes. So, the user has to supply the header name and pattern being used.
-        assert pattern is not None and header is not None
         assert app is not None
+        if headers is not None:
+            assert type(headers) is dict
 
         #some common scenarios
         self.functiondict = {
@@ -122,7 +119,6 @@ class A8FailureGenerator(object):
         services = self.app.get_services()
 
         #check defaults
-        assert self.header != "" and self.pattern != ""
         assert rule["source"] != "" and rule["dest"] != ""
         assert rule["source"] in services and rule["dest"] in services
         assert "delayprobability" in rule or "abortprobability" in rule
@@ -147,9 +143,6 @@ class A8FailureGenerator(object):
             "match": {
                 "source": {
                    "name": source_name
-                },
-                "headers": {
-                    self.header: self.pattern
                 }
             },
             "actions": [
@@ -161,6 +154,8 @@ class A8FailureGenerator(object):
             ]
         }
 
+        if self.headers is not None and len(self.headers) >0:
+            a8rule["match"]["headers"]=self.headers
         if source_version:
             a8rule["match"]["source"]["tags"] = source_version.split(",")
         if destination_version:
@@ -239,9 +234,6 @@ class A8FailureGenerator(object):
                     "match": {
                         "source": {
                             "name": source_name
-                        },
-                        "headers": {
-                            self.header: self.pattern
                         }
                     },
                     "actions": [
@@ -252,6 +244,8 @@ class A8FailureGenerator(object):
                         }
                     ]
                 }
+                if self.headers is not None and len(self.headers) >0:
+                    a8rule["match"]["headers"]=self.headers
                 if source_version:
                     log_rule["match"]["source"]["tags"] = source_version.split(",")
                 if destination_version:
