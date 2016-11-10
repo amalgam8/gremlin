@@ -53,21 +53,22 @@ def _duration_to_floatsec(s):
 
 class A8FailureGenerator(object):
 
-    def __init__(self, a8_controller_url = None, a8_controller_token=None, debug=False):
+    def __init__(self, app, header=None, pattern=None, a8_controller_url = None, a8_controller_token=None, debug=False):
         """
         Create a new failure generator
         @param app ApplicationGraph: instance of ApplicationGraph object
         """
+        self.app = app
         self.debug = debug
         self._id = str(uuid.uuid1())
         self._queue = []
         self._rule_ids = []
-        # self.header = header
-        # self.pattern = pattern
+        self.header = header
+        self.pattern = pattern
         self.a8_controller_url = a8_controller_url
         self.a8_controller_token = a8_controller_token
         assert a8_controller_url is not None and a8_controller_token is not None
-        # User submits a recipe describing a failure scenario. A recipe can consist of multiple faults.
+        # The failure generator SDK supports only one failure recipe at a given time. A recipe can consist of multiple tests.
         # The trackingheader and pattern fields in the recipes will be ignored. But multiple failure generators
         # can be run from different processes. So, the user has to supply the header name and pattern being used.
         assert pattern is not None and header is not None
