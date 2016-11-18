@@ -19,9 +19,9 @@ from assertionchecker import A8AssertionChecker
 import os, sys, requests
 
 debug = os.getenv('A8_DEBUG')=='1'
-a8_controller_url = os.getenv('A8_CONTROLLER_URL', 'http://localhost:31200')
+a8_controller_url = os.getenv('A8_CONTROLLER_URL', 'http://controller:8080')
 a8_controller_token = os.getenv('A8_CONTROLLER_TOKEN', '')
-a8_log_server = os.getenv('A8_LOG_SERVER', 'localhost:30200')
+a8_log_server = os.getenv('A8_LOG_SERVER', 'http://es:9200')
 
 app = Flask(__name__, static_url_path='')
 app.debug = True
