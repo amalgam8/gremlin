@@ -213,7 +213,8 @@ class A8FailureGenerator(object):
             #print json.dumps(payload, indent=2)
             resp = requests.post(self.a8_controller_url,
                                  headers = headers,
-                                 data=json.dumps(payload))
+                                 data=json.dumps(payload),
+                                 timeout=25)
             resp.raise_for_status()
             self._rule_ids = resp.json()["ids"]
         except requests.exceptions.ConnectionError, e:
