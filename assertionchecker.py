@@ -265,9 +265,9 @@ class A8AssertionChecker(object):
                     "filter": {
                         "bool": {
                             "must": [
-                                {"term": {"src": source}},
+                                {"match": {"src": source}},
                                 {"match": {"dst": dest}},
-                                { "term": {self.trace_log_key: self.trace_log_value}}
+                                {"term": {self.trace_log_key: self.trace_log_value}}
                             ]
                         }
                     }
@@ -329,7 +329,7 @@ class A8AssertionChecker(object):
                     "filter": {
                         "bool": {
                             "must": [
-                                {"term": {"src": source}},
+                                {"match": {"src": source}},
                                 {"match": {"dst": dest}},
                                 {"match": {self.trace_log_key: self.trace_log_value}}
                             ]
