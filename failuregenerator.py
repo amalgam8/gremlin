@@ -54,7 +54,7 @@ def _duration_to_floatsec(s):
 
 class A8FailureGenerator(object):
 
-    def __init__(self, app, headers=None, a8_controller_url = None, a8_controller_token=None, debug=False):
+    def __init__(self, app, headers=None, a8_controller_url = None, a8_controller_token=None, debug=True):
         """
         Create a new failure generator
         @param app ApplicationGraph: instance of ApplicationGraph object

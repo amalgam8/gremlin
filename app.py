@@ -16,6 +16,7 @@ from flask import Flask, json, jsonify, make_response, request, url_for, abort
 from applicationgraph import ApplicationGraph
 from failuregenerator import A8FailureGenerator
 from assertionchecker import A8AssertionChecker
+import logging
 import os, sys, requests
 
 debug = os.getenv('A8_DEBUG')=='1'
@@ -91,4 +92,6 @@ def delete_recipe(recipe_id):
     return ""
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.logger.addHandler(logging.StreamHandler(sys.stderr))
+    app.logger.setLevel(logging.DEBUG)
+    app.run(host='0.0.0.0', port=5000, debug = True)

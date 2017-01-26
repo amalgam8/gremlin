@@ -17,21 +17,23 @@ import copy
 from __builtin__ import dict
 import logging
 import logging.handlers
+import httplib
+from dateutil import parser
 
 #es_logger = logging.getLogger('elasticsearch')
 #es_logger.setLevel(logging.DEBUG)
 #es_logger.addHandler(logging.StreamHandler())
 
-# es_tracer = logging.getLogger('elasticsearch.trace')
-# es_tracer.setLevel(logging.DEBUG)
-# es_tracer.addHandler(logging.StreamHandler())
+es_tracer = logging.getLogger('elasticsearch.trace')
+es_tracer.setLevel(logging.DEBUG)
+es_tracer.addHandler(logging.StreamHandler())
 
 GremlinTestResult = namedtuple('GremlinTestResult', ['success','errormsg'])
 AssertionResult = namedtuple('AssertionResult', ['name','info','success','errormsg'])
 
 max_query_results = 500
 
-def _duration_to_floatsec(s):
+def _duration_to_msec(s):
     r = re.compile(r"(([0-9]*(\.[0-9]*)?)(\D+))", re.UNICODE)
     start=0
     m = r.search(s, start)
@@ -59,7 +61,7 @@ def _duration_to_floatsec(s):
         m = r.search(s, start)
     td = datetime.timedelta(**vals)
     duration_us = (td.microseconds + (td.seconds + td.days * 24 * 3600) * 10**6)
-    return duration_us/(1.0 * 10**6)
+    return int(duration_us/10**3)
 
 # def _since(timestamp):
 #     return time.time()-timestamp
@@ -97,7 +99,16 @@ def _get_by(key, val, l):
     """
     return [x for x in l if _check_value_recursively(key, val, x)]
 
-
+def _get_timestamp_in_ms(datestr):
+    """
+    Takes UTC timestamp and returns timestamp in milliseconds since epoch.
+    """
+    try:
+        date = parser.parse(datestr)
+        return time.mktime(date.timetuple()) * 1000 + date.microsecond/1000
+    except:
+        raise("unknown date time format in logs")
+    
 class A8AssertionChecker(object):
 
     """
@@ -107,7 +118,7 @@ class A8AssertionChecker(object):
     def __init__(self, es_host=None,
                  trace_log_value=None,
                  trace_log_key='gremlin_recipe_id',
-                 index="", debug=False):
+                 index="", debug=True):
         """
         param host: the elasticsearch host
         trace_log_key: the json field name holding the test ID (default is 'gremlin_recipe_id')
@@ -147,6 +158,11 @@ class A8AssertionChecker(object):
             'bounded_retries' : self.check_bounded_retries,
             'at_most_requests': self.check_at_most_requests
         }
+        if debug:
+            httplib.HTTPConnection.debuglevel = 1
+            logging.getLogger().setLevel(logging.DEBUG)
+            es_tracer.setLevel(logging.DEBUG)
+            es_tracer.propagate = True
 
     def _check_non_zero_results(self, data):
         """
@@ -177,7 +193,7 @@ class A8AssertionChecker(object):
         assert 'source' in kwargs and 'dest' in kwargs and 'max_latency' in kwargs
         dest = kwargs['dest']
         source = kwargs['source']
-        max_latency = _duration_to_floatsec(kwargs['max_latency'])
+        max_latency = _duration_to_msec(kwargs['max_latency'])
         query_body = self._get_query_object(source, dest)
         data = self._es.search(index=self.index, body=query_body)
         if self.debug:
@@ -191,7 +207,7 @@ class A8AssertionChecker(object):
             return GremlinTestResult(result, errormsg)
 
         for message in data["hits"]["hits"]:
-            if float(message['_source']["upstream_response_time"]) > max_latency:
+            if int(message['_source']["upstream_response_time"]) > max_latency:
                 result = False
                 errormsg = "{} did not reply in time for request from {}: found one instance where resp time was {}s - max {}s".format(
                     dest, source, message['_source']["upstream_response_time"], max_latency)
@@ -352,14 +368,14 @@ class A8AssertionChecker(object):
         if wait_time is None:
             return GremlinTestResult(result, errormsg)
 
-        wait_time = _duration_to_floatsec(wait_time)
+        wait_time = _duration_to_msec(wait_time)
         # Now we have to check the timestamps
         for bucket in data["aggregations"]["byid"]["buckets"]:
             req_id = bucket["key"]
             req_seq = _get_by(self.trace_log_key, req_id, data["hits"]["hits"])
-            req_seq.sort(key=lambda x: int(x['_source']["timestamp_in_ms"]))
+            req_seq.sort(key=lambda x: int(_get_timestamp_in_ms(x['_source']["start_time"])))
             for i in range(len(req_seq) - 1):
-                observed = (req_seq[i + 1]['_source']["timestamp_in_ms"] - req_seq[i]['_source']["timestamp_in_ms"])/1000.0
+                observed = (_get_timestamp_in_ms(req_seq[i + 1]['_source']["start_time"]) - _get_timestamp_in_ms(req_seq[i]['_source']["start_time"]))/1000.0
                 if not (((wait_time - errdelta) <= observed) or (observed <= (wait_time + errdelta))):
                     errormsg = "{} -> {} - expected {}+/-{}s spacing for retry attempt {}, but request {} had a spacing of {}s".format(
                         source, dest, wait_time, errdelta, i+1, req_id, observed)
